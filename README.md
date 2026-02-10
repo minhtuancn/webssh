@@ -18,6 +18,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white" alt="Docker">
   <img src="https://img.shields.io/badge/python-3.11+-3776AB?logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/coolify-deployable-6B46C1?logo=coolify&logoColor=white" alt="Coolify">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen" alt="PRs Welcome">
 </p>
@@ -114,6 +115,18 @@ docker compose up -d
 Open http://localhost:5000 and create your first account.
 
 > **Tip:** Edit `docker-compose.yml` directly to change settings. No `.env` file needed!
+
+### Coolify (One-Click Deploy)
+
+Deploy Web SSH Terminal on [Coolify](https://coolify.io) with just a few clicks:
+
+1. Create a new **Docker Image** service in Coolify
+2. Use image: `ghcr.io/bifrost0x/webssh:latest`
+3. Set environment variables (SECRET_KEY and CORS_ORIGINS)
+4. Configure your domain with HTTPS
+5. Deploy!
+
+📖 **[Complete Coolify Deployment Guide](COOLIFY_DEPLOYMENT.md)** - Step-by-step instructions with troubleshooting
 
 ## Installation
 

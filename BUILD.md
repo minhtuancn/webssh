@@ -8,6 +8,8 @@ This document provides comprehensive instructions for building and deploying the
 - [Building the Application](#building-the-application)
 - [Running Tests](#running-tests)
 - [Docker Deployment](#docker-deployment)
+  - [Docker Compose Deployment](#docker-compose-deployment)
+  - [Coolify Deployment](#coolify-deployment)
 - [Production Deployment](#production-deployment)
 
 ## Prerequisites
@@ -190,6 +192,20 @@ sed -i "s/<YOUR-SECRET-KEY>/$SECRET/" docker-compose.yml
 ```bash
 docker compose up -d
 ```
+
+### Coolify Deployment
+
+For easy one-click deployment on Coolify:
+
+1. **Quick Deploy**: Create a new Docker Image service with `ghcr.io/bifrost0x/webssh:latest`
+2. **Full Guide**: See [COOLIFY_DEPLOYMENT.md](COOLIFY_DEPLOYMENT.md) for complete step-by-step instructions
+
+Coolify provides:
+- Automatic HTTPS with Let's Encrypt
+- Built-in reverse proxy (Traefik)
+- Easy environment variable management
+- Persistent volume handling
+- One-click updates
 
 ### Docker Health Check
 
