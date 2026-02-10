@@ -43,6 +43,13 @@ dist/
 *.egg-info/
 data/
 
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+
 # AI assistant files
 CLAUDE.md
 .claude/
