@@ -1,0 +1,96 @@
+##############################################
+# Web SSH Terminal - Docker Compose cho Coolify 4.x
+#
+# File này được tối ưu hóa cho việc deploy trên Coolify 4.x
+# với NPM (Nginx Proxy Manager) proxy từ internet
+#
+# DOMAIN MẶC ĐỊNH: webssh.go7s.net
+# (Thay đổi domain trong labels và CORS_ORIGINS nếu dùng domain khác)
+# WEBSOCKET: Enabled
+#
+# HƯỚNG DẪN SỬ DỤNG:
+# 1. Trong Coolify, tạo mới Service → Docker Compose
+# 2. Paste nội dung file này vào
+# 3. Thêm Environment Variables trong Coolify:
+#    - SECRET_KEY (bắt buộc): openssl rand -hex 32
+#    - CORS_ORIGINS (tùy chọn): https://your-domain.com (mặc định: https://webssh.go7s.net)
+# 4. Configure domain trong Coolify UI
+# 5. Deploy!
+#
+# ĐỂ DÙNG DOMAIN KHÁC: Thay đổi 'webssh.go7s.net' trong phần labels
+##############################################
+
+services:
+  webssh:
+    image: ghcr.io/bifrost0x/webssh:latest
+    container_name: webssh
+    restart: unless-stopped
+    
+    # Port mapping - Coolify sẽ tự động map thông qua Traefik
+    # Không expose port ra ngoài vì đã có NPM proxy
+    expose:
+      - "5000"
+    
+    environment:
+      # === BẮT BUỘC: Cấu hình qua Coolify Environment Variables ===
+      # SECRET_KEY: Generate với openssl rand -hex 32
+      - SECRET_KEY=${SECRET_KEY}
+      
+      # CORS_ORIGINS: Domain của bạn
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://webssh.go7s.net}
+      
+      # === QUAN TRỌNG: Cấu hình cho reverse proxy (NPM + Coolify Traefik) ===
+      # Bật TRUSTED_PROXIES vì có NPM proxy phía trước
+      - TRUSTED_PROXIES=1
+      
+      # HTTPS được xử lý bởi NPM proxy
+      - SESSION_COOKIE_SECURE=true
+      
+      # === WEBSOCKET: Đã được enable mặc định bởi Flask-SocketIO ===
+      # Không cần cấu hình thêm, app đã hỗ trợ WebSocket qua /socket.io/
+      
+      # === Cấu hình tùy chọn ===
+      - ALLOW_CORS_WILDCARD=${ALLOW_CORS_WILDCARD:-false}
+      - DEBUG=False
+      - HOST=0.0.0.0
+      - PORT=5000
+      - DATA_DIR=/app/data
+    
+    volumes:
+      # Persistent storage cho database và SSH keys
+      - webssh_data:/app/data
+    
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('127.0.0.1', 5000), 2); s.close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    
+    # === Labels cho Coolify/Traefik ===
+    # Coolify sẽ tự động thêm labels cho routing
+    # Các labels dưới đây là optional, Coolify UI sẽ override
+    labels:
+      # Enable Traefik
+      - "traefik.enable=true"
+      
+      # HTTP Router
+      - "traefik.http.routers.webssh.rule=Host(`webssh.go7s.net`)"
+      - "traefik.http.routers.webssh.entrypoints=http"
+      
+      # HTTPS Router (nếu Coolify/Traefik xử lý SSL)
+      - "traefik.http.routers.webssh-secure.rule=Host(`webssh.go7s.net`)"
+      - "traefik.http.routers.webssh-secure.entrypoints=https"
+      - "traefik.http.routers.webssh-secure.tls=true"
+      
+      # Service port
+      - "traefik.http.services.webssh.loadbalancer.server.port=5000"
+      
+      # === WEBSOCKET Support ===
+      # Cho phép WebSocket upgrade headers đi qua Traefik
+      - "traefik.http.middlewares.webssh-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.webssh-secure.middlewares=webssh-headers"
+
+volumes:
+  webssh_data:
+    driver: local
