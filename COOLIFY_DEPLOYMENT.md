@@ -155,6 +155,135 @@ Follow steps 5-6 from Method 1.
 
 ---
 
+### Method 2.5: Coolify 4.x với NPM Proxy (docker-compose.coolify.yml)
+
+Dành cho việc deploy trên Coolify 4.x khi có Nginx Proxy Manager (NPM) làm reverse proxy từ internet.
+
+#### Đặc điểm:
+- **WebSocket được enable** cho real-time terminal
+- **Tương thích với NPM proxy** phía trước Coolify
+- **Traefik labels** được cấu hình sẵn
+- **HTTPS** được xử lý bởi NPM
+
+#### Step 1: Tạo Service trong Coolify
+
+1. Đăng nhập Coolify dashboard
+2. Điều hướng đến project của bạn
+3. Click **"+ New Resource"** → **"Service"** → **"Docker Compose"**
+
+#### Step 2: Sử dụng file docker-compose.coolify.yml
+
+Copy nội dung từ file `docker-compose.coolify.yml` trong repository hoặc sử dụng cấu hình sau:
+
+```yaml
+services:
+  webssh:
+    image: ghcr.io/bifrost0x/webssh:latest
+    container_name: webssh
+    restart: unless-stopped
+    expose:
+      - "5000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://webssh.go7s.net}
+      - TRUSTED_PROXIES=1
+      - SESSION_COOKIE_SECURE=true
+      - ALLOW_CORS_WILDCARD=${ALLOW_CORS_WILDCARD:-false}
+      - DEBUG=False
+      - HOST=0.0.0.0
+      - PORT=5000
+      - DATA_DIR=/app/data
+    volumes:
+      - webssh_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('127.0.0.1', 5000), 2); s.close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.webssh.rule=Host(`webssh.go7s.net`)"
+      - "traefik.http.routers.webssh.entrypoints=http"
+      - "traefik.http.routers.webssh-secure.rule=Host(`webssh.go7s.net`)"
+      - "traefik.http.routers.webssh-secure.entrypoints=https"
+      - "traefik.http.routers.webssh-secure.tls=true"
+      - "traefik.http.services.webssh.loadbalancer.server.port=5000"
+
+volumes:
+  webssh_data:
+    driver: local
+```
+
+#### Step 3: Cấu hình Environment Variables trong Coolify
+
+Thêm các biến môi trường sau:
+
+```bash
+SECRET_KEY=<generate-with-openssl-rand-hex-32>
+CORS_ORIGINS=https://webssh.go7s.net
+```
+
+Để generate SECRET_KEY:
+```bash
+openssl rand -hex 32
+```
+
+#### Step 4: Cấu hình NPM Proxy cho WebSocket
+
+Trong Nginx Proxy Manager, khi tạo Proxy Host cho `webssh.go7s.net`:
+
+1. **Details Tab:**
+   - Domain Names: `webssh.go7s.net`
+   - Scheme: `http`
+   - Forward Hostname/IP: `<coolify-server-ip>` hoặc container name
+   - Forward Port: `5000` (hoặc port mà Coolify expose)
+
+2. **Advanced Tab - Custom Nginx Configuration:**
+```nginx
+# WebSocket Support
+proxy_http_version 1.1;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection "upgrade";
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+
+# WebSocket timeout
+proxy_read_timeout 86400;
+proxy_send_timeout 86400;
+```
+
+3. **SSL Tab:**
+   - Enable SSL
+   - Force SSL
+   - Request a new SSL Certificate (Let's Encrypt)
+
+#### Step 5: Deploy và Test
+
+1. Click **"Deploy"** trong Coolify
+2. Kiểm tra logs để đảm bảo không có lỗi
+3. Truy cập `https://webssh.go7s.net`
+4. Tạo tài khoản và test kết nối SSH
+
+#### Troubleshooting cho NPM + Coolify
+
+**WebSocket không hoạt động:**
+- Đảm bảo đã thêm cấu hình WebSocket trong NPM Advanced tab
+- Kiểm tra `TRUSTED_PROXIES=1` đã được set
+- Verify CORS_ORIGINS khớp chính xác với domain
+
+**Connection bị timeout:**
+- Tăng `proxy_read_timeout` trong NPM
+- Kiểm tra firewall cho phép WebSocket connections
+
+**Session không được lưu:**
+- Đảm bảo `SESSION_COOKIE_SECURE=true` khi dùng HTTPS
+- Kiểm tra cookie SameSite settings
+
+---
+
 ### Method 3: GitHub Repository Deployment
 
 Deploy directly from the source code:
